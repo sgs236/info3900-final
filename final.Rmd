@@ -1,0 +1,118 @@
+---
+output: pdf_document
+---
+
+------------------------------------------------------------------------
+
+## Installation
+
+```{r}
+# The following line causes a compliation issue when knitting, uncomment if you run yourself
+# install.packages('tidyverse')
+# install.packages('dplyr')
+library(tidyverse)
+library(haven)
+library(dplyr)
+```
+
+## Pre-process dataset
+
+```{r}
+# Treatment Variable: H4WP3 (if the biological mother has ever spent time in jail or prison)
+# Outcome Variable: H4ED1 (respondent’s high school graduation status)
+
+# CHANGE THIS TO WHERE YOUR WAVE 4 DATASET IS. THE WAVE 4 FOLDER SHOULD BE NAMED 'Wave4'
+wave4_dir <- "Wave4/"
+
+concat <- function(s1, s2) {
+  return (paste(s1, s2, sep=""))
+}
+
+# w4inhome_dvn.sav is the main datatable that contains our treatment and outcome variable
+inhome_df <- read_sav(concat(wave4_dir, "w4inhome_dvn.sav")) 
+birth_df <- read_sav(concat(wave4_dir, "w4birth_dvn.sav"))
+segment_df <- read_sav(concat(wave4_dir, "w4segment_dvn.sav"))
+
+# join against these table because they could have useful information
+# keep rows with unique AIDs only
+birth_df <- birth_df %>% distinct(AID, .keep_all = TRUE)
+segment_df <- segment_df %>% distinct(AID, .keep_all = TRUE)
+
+combined_df <- inhome_df %>% 
+  left_join(birth_df, by = "AID") %>%
+  left_join(segment_df, by = "AID")
+
+
+relevant_df = combined_df %>% 
+  filter(H4WP3 <= 1) %>% # Filter out refused or don't know for H4WP3
+  filter(H4ED1 <= 4) %>% # Filter our don't know for H4ED1
+  select(H4WP3, H4WP4, H4WP5, H4WP24, H4OD4,H4EC1,H4ED7, BIO_SEX4, H4ED1) # IMPORTANT: ADD ADDITIONAL COLUMNS YOU WANT TO INCLUDE HERE
+
+relevant_df <- relevant_df %>% 
+  rename(Mother.Incarcerated = H4WP3, 
+         Mother.Incarcerated.Times = H4WP4,
+         Mother.Incarcerated.Respondent.Age = H4WP5,
+         Mother.Relationship.Respondent = H4WP24,
+         US.Citizen = H4OD4,
+         Household.Income = H4EC1,
+         Family.Support.Education = H4ED7,
+         Sex = BIO_SEX4,
+         Highschool.Graduated = H4ED1)
+
+# Print colnames, look up colnames on 
+# https://addhealth.cpc.unc.edu/documentation/codebook-explorer/#/
+# To see if they are relevant
+colnames(combined_df)
+
+# Print preview for dataset
+relevant_df
+
+```
+
+## Overview of Data Pre-processing
+
+### Treatment and Outcome Variables
+
+Our treatment variable is H4WP3 (if the biological mother has ever spent time in jail or prison). Our outcome variable is H4ED1 (respondent's high school graduation status).
+
+$A_i = \begin{cases}
+            0 & \text{ if biological mother never spent time in prison}\\
+        1 & \text{ if biological mother ever spent time in prision }
+        \end{cases}$
+
+$Y_i = \begin{cases}
+            0 & \text{ if did not received a high school diploma or equivalent}\\
+        1 & \text{ if received a high school diploma or equivalent }
+        \end{cases}$
+
+### Tables
+
+We use the Wave 4 dataset from the ADD Health longitudinal study. Our treatment and outcome variables are found in the 'in-home' dataset within W4. Within this dataset, each respondent is classified by an AID. Since there are data present in order tables that we may need to adjust for, such as sex, partner relationships, birth information, etc., we join the 'in-home' table with the 'birth_dvn' and 'w4segment_dvn' tables also found in Wave 4 on AID to incorporate additional relevant information into our analysis.
+
+### Data Adjustment
+
+For our treatment variable, we drop rows where our treatment variable is not well-defined (respondent entered don't know or did not respond).
+
+For our outcome variable, we grouped 'finished high school with a diploma' and 'earned a high school equivalency degree' as one and 'earned a certificate of attendance or certificate of completion' and 'did not receive a high school diploma, equivalency degree (GED), or other certificate' as 0. Furthermore, we drop rows whose graduation status is 'don't know.'
+
+### Description of Columns
+
+Visit <https://addhealth.cpc.unc.edu/documentation/codebook-explorer/> for a more detailed description of the columns.
+
+**Mother.Incarcerated** (H4WP3) [Treatment Variable]: (Has/did) your biological mother ever (spent/spend) time in jail or prison?
+
+**Mother.Incarcerated.Times** (H4WP4): How many times (has/did) your biological mother (spent/spend) time in jail or prison?
+
+**Mother.Incarcerated.Respondent.Age** (H4WP5): How old were you when your biological mother went to jail or prison (the first time)?
+
+**Mother.Relationship.Respondent** (H4WP24): How close do you feel to your [mother figure]?
+
+**US.Citizen** (H4OD4): Were you born a U.S. citizen?
+
+**Household.Income** (H4EC1): Thinking about your income and the income of everyone who lives in your household and contributes to the household budget, what was the total household income before taxes and deductions in {2006/2007/2008}? Include all sources of income, including non-legal sources.
+
+**Family.Support.Education** (H4ED7): In the past 12 months, have any relatives, including your parents or in-laws, helped you out by paying some of your educational expenses, such as tuition or books?
+
+**Sex** (BIO_SEX4): Respondent's Gender
+
+**Highschool.Graduated** (H4ED1) [Outcome Variable]: What is your high school graduation status?
