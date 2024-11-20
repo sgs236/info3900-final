@@ -46,7 +46,14 @@ combined_df <- inhome_df %>%
 relevant_df = combined_df %>% 
   filter(H4WP3 <= 1) %>% # Filter out refused or don't know for H4WP3
   filter(H4ED1 <= 4) %>% # Filter our don't know for H4ED1
-  select(H4WP3, H4WP4, H4WP5, H4WP24, H4OD4,H4EC1,H4ED7, BIO_SEX4, H4ED1) # IMPORTANT: ADD ADDITIONAL COLUMNS YOU WANT TO INCLUDE HERE
+  mutate(H4WP4 = case_when(H4WP4 >= 97 ~ NA, .default = H4WP4),
+         H4WP5 = case_when(H4WP5 >= 94 ~ NA, .default = H4WP5),
+         H4WP24 = case_when(H4WP24 == 7 ~ NA, .default = H4WP24),
+         H4EC1 = case_when(H4EC1 >= 96 ~ NA, .default = H4EC1),
+         H4ED7 = case_when(H4ED7 >= 5 ~ NA, .default = H4ED7),
+         H4EC7 = case_when(H4EC7 >= 96 ~ NA, .default = H4EC7),
+         H4EO7 = case_when(H4EO7 > 4 ~ NA, .default = H4EO7)) %>% #Change Don't Know/Missing/Refuse values to NA rather than numerical code
+  select(H4WP3, H4WP4, H4WP5, H4WP24, H4OD4, H4EC1, H4EC7, H4LM28, H4ED7, H4EO7, BIO_SEX4, H4ED1) 
 
 relevant_df <- relevant_df %>% 
   rename(Mother.Incarcerated = H4WP3, 
@@ -55,7 +62,10 @@ relevant_df <- relevant_df %>%
          Mother.Relationship.Respondent = H4WP24,
          US.Citizen = H4OD4,
          Household.Income = H4EC1,
+         Household.Assets = H4EC7,
          Family.Support.Education = H4ED7,
+         Family.Responsibilities = H4LM28,
+         Neighborhood.Safety = H4EO7,
          Sex = BIO_SEX4,
          Highschool.Graduated = H4ED1)
 
@@ -95,6 +105,8 @@ For our treatment variable, we drop rows where our treatment variable is not wel
 
 For our outcome variable, we grouped 'finished high school with a diploma' and 'earned a high school equivalency degree' as one and 'earned a certificate of attendance or certificate of completion' and 'did not receive a high school diploma, equivalency degree (GED), or other certificate' as 0. Furthermore, we drop rows whose graduation status is 'don't know.'
 
+For confounding and other relevant variables, we changed the encoded numerical value for 'don't know', 'refused', or other similar missing data to NA values.
+
 ### Description of Columns
 
 Visit <https://addhealth.cpc.unc.edu/documentation/codebook-explorer/> for a more detailed description of the columns.
@@ -111,7 +123,13 @@ Visit <https://addhealth.cpc.unc.edu/documentation/codebook-explorer/> for a mor
 
 **Household.Income** (H4EC1): Thinking about your income and the income of everyone who lives in your household and contributes to the household budget, what was the total household income before taxes and deductions in {2006/2007/2008}? Include all sources of income, including non-legal sources.
 
+**Household.Assets** (H4EC7): What is your best estimate of the total value of your assets and the assets of everyone who lives in your household and contributes to the household budget? Include all assets, such as bank accounts, retirement plans and stocks. Do not include equity in your home.
+
 **Family.Support.Education** (H4ED7): In the past 12 months, have any relatives, including your parents or in-laws, helped you out by paying some of your educational expenses, such as tuition or books?
+
+**Family.Responsibilities** (H4LM28): Indicate how much you would agree or disagree with this statement: Family responsibilities have interfered with my ability to work.
+
+**Neighborhood.Safety** (H4EO7): How safe did you feel when you were in the sample member's/respondent's neighborhood?
 
 **Sex** (BIO_SEX4): Respondent's Gender
 
