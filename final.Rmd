@@ -134,3 +134,59 @@ Visit <https://addhealth.cpc.unc.edu/documentation/codebook-explorer/> for a mor
 **Sex** (BIO_SEX4): Respondent's Gender
 
 **Highschool.Graduated** (H4ED1) [Outcome Variable]: What is your high school graduation status?
+
+### Consistency and Positivity
+
+**Consistency**
+
+This assumption seems reasonable for our analysis since the outcome (high school graduation status) and treatment (whether the biological mother was incarcerated) are clearly defined
+However, discrepancies in misreporting or recall bias could affect results as respondents may inaccurately recall their mother’s incarceration or graduation status. 
+Overall, assuming accurate reporting, the consistency assumption holds and is unlikely to pose significant problems in our analysis.
+
+**Positivity**
+
+To check positivity, we need to ensure overlap between the treated and control groups. This involves checking whether the propensity scores for the treated group overlap with those of the control group.
+
+```{r}
+library(MatchIt)
+
+ps_model <- glm(Mother.Incarcerated ~ Household.Income + Neighborhood.Safety + Family.Support.Education,data = relevant_df, family = "binomial")
+
+relevant_df <- relevant_df %>% drop_na(Household.Income, Neighborhood.Safety, Family.Support.Education)
+
+relevant_df$propensity_score <- predict(ps_model, type = "response")
+
+```
+
+Now, we Visualize Overlap of Propensity Scores across the two groups through density plot.
+
+```{r}
+ggplot(relevant_df, aes(x = propensity_score, fill = as.factor(Mother.Incarcerated))) +
+  geom_density(alpha = 0.5) +labs(title = "Propensity Score Distribution by Treatment Group",x = "Propensity Score",fill = "Mother Incarcerated") +theme_minimal()
+
+```
+
+Looking at the above plot, Substantial overlap was observed between the two groups, satisfying the positivity condition.
+
+To ensure no positivity violations, we restricted the analysis to individuals whose propensity scores fall within the overlapping range.
+
+```{r}
+min_score <- max(
+  min(relevant_df$propensity_score[relevant_df$Mother.Incarcerated == 1]),
+  min(relevant_df$propensity_score[relevant_df$Mother.Incarcerated == 0])
+)
+max_score <- min(
+  max(relevant_df$propensity_score[relevant_df$Mother.Incarcerated == 1]),
+  max(relevant_df$propensity_score[relevant_df$Mother.Incarcerated == 0])
+)
+
+relevant_df <- relevant_df %>%filter(propensity_score >= min_score & propensity_score <= max_score)
+
+plot2 <- ggplot(relevant_df, aes(x = propensity_score, color =factor(Mother.Incarcerated))) +geom_density() +ggtitle("Second Plot: Propensity Score Density After Filtering") +
+  labs(color = "Mother Incarcerated") +theme_minimal()
+
+print(plot2)
+
+```
+
+A second density plot confirms that the filtered dataset maintains substantial overlap in propensity scores.The positivity assumption is meet after filtering the data to the region of common support. Substantial overlap in propensity scores confirms that all groups have a chance of receiving either treatment condition. 
